@@ -2,7 +2,7 @@ import { useParams } from "react-router-dom";
 import { useState } from "react";
 import { TOOLS } from "../../lib/tools";
 
-function ToolPage() {
+function Upload() {
   const { tool } = useParams(); // word-to-pdf
   
   // Get the tool configuration from TOOLS
@@ -46,10 +46,13 @@ function ToolPage() {
     });
 
     try {
-      const res = await fetch("http://localhost:8000/process", {
-        method: "POST",
-        body: formData
-      });
+      const res = await fetch(
+        `http://localhost:5000${config.backendRoute}`,
+        {
+          method: "POST",
+          body: formData
+        }
+      );
 
       if (!res.ok) {
         throw new Error(`Processing failed with status ${res.status}`);
@@ -151,4 +154,4 @@ function ToolPage() {
   );
 }
 
-export default ToolPage;
+export default Upload;
