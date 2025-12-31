@@ -1,0 +1,65 @@
+# =========================
+# Node.js
+# =========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =========================
+# Environment files
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# OS / Editor junk
+# =========================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# =========================
+# Temporary / Runtime files
+# =========================
+tmp/
+temp/
+uploads/
+outputs/
+
+# Render / Linux temp
+/tmp
+/tmp/*
+
+# =========================
+# Logs
+# =========================
+logs/
+*.log
+
+# =========================
+# Build / Cache
+# =========================
+dist/
+build/
+.cache/
+
+# =========================
+# Coverage / Tests
+# =========================
+coverage/
+
+# =========================
+# Python (for future FastAPI)
+# =========================
+__pycache__/
+*.pyc
+venv/
+.env/
+
+# =========================
+# Docker
+# =========================
+*.pid
