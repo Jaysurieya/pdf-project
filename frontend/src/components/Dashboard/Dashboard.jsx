@@ -7,7 +7,7 @@ function Dashboard() {
   const categories = [
     {
       title: "ORGANIZE PDF",
-      tools: ["Merge PDF", "Split PDF", "Extract Pages", "Organize PDF", "Scan to PDF", "Remove Pages"]
+      tools: ["Merge PDF", "Split PDF", "Organize PDF", "Scan to PDF", "Remove Pages"]
     },
     {
       title: "OPTIMIZE PDF",
@@ -60,7 +60,6 @@ function Dashboard() {
                     // ORGANIZE PDF
                     "Merge PDF": "merge-pdf",
                     "Split PDF": "split-pdf",
-                    "Extract Pages": "extract-pages",
                     "Organize PDF": "organize-pdf",
                     "Scan to PDF": "scan-to-pdf",
                     "Remove Pages": "remove-pages",

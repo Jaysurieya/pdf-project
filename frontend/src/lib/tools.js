@@ -8,42 +8,35 @@ export const TOOLS = {
     accept: ".pdf",
     multiple: true,
     toolKey: "merge_pdf",
-    backendRoute: "/api/organize/merge"
+    backendRoute: "/api/organize/org"
   },
   "split-pdf": {
     title: "Split PDF",
     accept: ".pdf",
     multiple: false,
     toolKey: "split_pdf",
-    backendRoute: "/api/organize/split"
-  },
-  "extract-pages": {
-    title: "Extract Pages",
-    accept: ".pdf",
-    multiple: false,
-    toolKey: "extract_pages",
-    backendRoute: "/api/organize/extract"
+    backendRoute: "/api/organize/org"
   },
   "organize-pdf": {
     title: "Organize PDF",
     accept: ".pdf",
     multiple: false,
     toolKey: "organize_pdf",
-    backendRoute: "/api/organize/reorder"
+    backendRoute: "/api/organize/org"
   },
   "scan-to-pdf": {
     title: "Scan to PDF",
     accept: ".jpg,.jpeg,.png",
     multiple: true,
     toolKey: "scan_to_pdf",
-    backendRoute: "/api/organize/scan-to-pdf"
+    backendRoute: "/api/organize/org"
   },
   "remove-pages": {
     title: "Remove Pages",
     accept: ".pdf",
     multiple: false,
     toolKey: "remove_pages",
-    backendRoute: "/api/organize/remove"
+    backendRoute: "/api/organize/org"
   },
 
   // ======================

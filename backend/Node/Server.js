@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-
+const organizeRoutes = require("./Routes/organize.routes");
 const convertRoutes = require("./Routes/convert.routes");
 
 const app = express();
@@ -9,6 +9,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use("/api/convert", convertRoutes);
+app.use("/api/organize", organizeRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
