@@ -4,9 +4,7 @@ const os = require("os");
 const path = require("path");
 const { v4: uuid } = require("uuid");
 
-/**
- * Decide Chrome / Chromium path based on environment
- */
+
 const getChromePath = () => {
   // 1️⃣ Prefer env variable (BEST for deployment)
   if (process.env.CHROME_PATH) {
