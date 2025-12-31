@@ -1,23 +1,39 @@
-const fs = require("fs");
 const path = require("path");
-const pdf = require("pdf-parse");
-const ExcelJS = require("exceljs");
+const os = require("os");
+const fs = require("fs");
+const { exec } = require("child_process");
 
-module.exports = async (pdfPath) => {
-  const dataBuffer = fs.readFileSync(pdfPath);
-  const data = await pdf(dataBuffer);
+module.exports = (pdfPath) => {
+  return new Promise((resolve, reject) => {
+    const outputDir = os.tmpdir();
+    const baseName = path.basename(pdfPath, path.extname(pdfPath));
+    const outputPath = path.join(outputDir, `${baseName}.docx`);
 
-  const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet("PDF Data");
+    // LibreOffice command
+    const command = `soffice --headless --convert-to docx "${pdfPath}" --outdir "${outputDir}"`;
 
-  const lines = data.text.split("\n");
+    console.log("🛠 LibreOffice CMD:", command);
 
-  lines.forEach((line, index) => {
-    sheet.addRow([line]);
+    exec(command, (error) => {
+      if (error) {
+        console.error("❌ PDF → Word failed");
+        return reject(error);
+      }
+
+      // ⏳ wait until file exists
+      const checkFile = setInterval(() => {
+        if (fs.existsSync(outputPath)) {
+          clearInterval(checkFile);
+          console.log("✅ PDF → Word ready:", outputPath);
+          resolve(outputPath);
+        }
+      }, 300);
+
+      // safety timeout
+      setTimeout(() => {
+        clearInterval(checkFile);
+        reject(new Error("LibreOffice conversion timeout"));
+      }, 10000);
+    });
   });
-
-  const outputPath = pdfPath.replace(".pdf", ".xlsx");
-  await workbook.xlsx.writeFile(outputPath);
-
-  return outputPath;
 };
