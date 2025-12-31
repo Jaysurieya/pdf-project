@@ -2,7 +2,7 @@ const puppeteer = require("puppeteer-core");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { v4: uuid } = require("uuid");
+const { randomUUID } = require("crypto");
 
 
 const getChromePath = () => {
@@ -44,7 +44,7 @@ module.exports = async (htmlPath) => {
       waitUntil: "networkidle0"
     });
 
-    const outputPath = path.join(os.tmpdir(), `${uuid()}.pdf`);
+    const outputPath = path.join(os.tmpdir(), `${randomUUID()}.pdf`);
 
     await page.pdf({
       path: outputPath,

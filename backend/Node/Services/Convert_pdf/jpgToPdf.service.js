@@ -1,7 +1,8 @@
 const fs = require("fs");
 const path = require("path");
+const os = require("os");
 const { PDFDocument } = require("pdf-lib");
-const { v4: uuid } = require("uuid");
+const { randomUUID } = require("crypto");
 
 module.exports = async (imagePath) => {
   const pdfDoc = await PDFDocument.create();
@@ -19,7 +20,7 @@ module.exports = async (imagePath) => {
 
   const pdfBytes = await pdfDoc.save();
 
-  const outputPath = `/tmp/${uuid()}.pdf`;
+  const outputPath = path.join(os.tmpdir(), `${randomUUID()}.pdf`);
   fs.writeFileSync(outputPath, pdfBytes);
 
   return outputPath;

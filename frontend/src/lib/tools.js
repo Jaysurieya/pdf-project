@@ -118,28 +118,28 @@ export const TOOLS = {
     accept: ".pdf",
     multiple: false,
     toolKey: "pdf_to_jpg",
-    backendRoute: "/api/convert/from-pdf/jpg"
+    backendRoute: "/api/convert/from-pdf?type=jpg"
   },
   "pdf-to-word": {
     title: "PDF to Word",
     accept: ".pdf",
     multiple: false,
     toolKey: "pdf_to_word",
-    backendRoute: "/api/convert/from-pdf/word"
+    backendRoute: "/api/convert/from-pdf?type=word"
   },
   "pdf-to-excel": {
     title: "PDF to Excel",
     accept: ".pdf",
     multiple: false,
     toolKey: "pdf_to_excel",
-    backendRoute: "/api/convert/from-pdf/excel"
+    backendRoute: "/api/convert/from-pdf?type=excel"
   },
   "pdf-to-pdfa": {
     title: "PDF to PDF/A",
     accept: ".pdf",
     multiple: false,
     toolKey: "pdf_to_pdfa",
-    backendRoute: "/api/convert/from-pdf/pdfa"
+    backendRoute: "/api/convert/from-pdf?type=pdfa"
   },
 
   // ======================
