@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PDF AI | Professional PDF Tools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              primary: '#0061ff',
+              blue: {
+                50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa',
+                500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a8a', 950: '#172554',
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+        transition: background-color 0.3s ease, color 0.3s ease;
+        opacity: 0;
+      }
+      body.fade-in {
+        opacity: 1;
+        transition: opacity 0.8s ease-out;
+      }
+      .glass-nav {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+      }
+      .dark .glass-nav {
+        background: rgba(15, 23, 42, 0.7);
+      }
+      .mesh-gradient {
+        background-color: hsla(0, 0%, 100%, 1);
+        background-image: 
+          radial-gradient(at 0% 0%, hsla(214, 100%, 97%, 1) 0px, transparent 50%),
+          radial-gradient(at 100% 0%, hsla(220, 78%, 95%, 1) 0px, transparent 50%);
+      }
+      .dark .mesh-gradient {
+        background-color: hsla(222, 47%, 11%, 1);
+        background-image: 
+          radial-gradient(at 0% 0%, hsla(214, 100%, 15%, 1) 0px, transparent 50%),
+          radial-gradient(at 100% 0%, hsla(220, 78%, 15%, 1) 0px, transparent 50%);
+      }
+      @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-20px); }
+      }
+      .float-animation {
+        animation: float 6s ease-in-out infinite;
+      }
+    </style>
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@19.0.0",
+        "react/": "https://esm.sh/react@19.0.0/",
+        "react-dom": "https://esm.sh/react-dom@19.0.0",
+        "react-dom/": "https://esm.sh/react-dom@19.0.0/",
+        "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
+        "lucide-react": "https://esm.sh/lucide-react@0.460.0?external=react",
+        "framer-motion": "https://esm.sh/framer-motion@11.11.17?external=react,react-dom"
+      }
+    }
+    </script>
+  <link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50 transition-colors duration-300">
+    <div id="root"></div>
+    <script type="module" src="index.tsx"></script>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
