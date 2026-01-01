@@ -4,10 +4,10 @@ import { TOOLS } from "../../lib/tools";
 
 function Upload() {
   const { tool } = useParams(); // word-to-pdf
-  
+
   // Get the tool configuration from TOOLS
   const config = TOOLS[tool];
-  
+
   // If tool doesn't exist in config, show an error
   if (!config) {
     return (
@@ -22,6 +22,8 @@ function Upload() {
 
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [password, setPassword] = useState("");
+
 
   // handle file selection
   const handleFileChange = (e) => {
@@ -31,15 +33,31 @@ function Upload() {
 
   // MAIN BUTTON CLICK LOGIC
   const handleProcess = async () => {
+
     if (files.length === 0) {
       alert("Please add file");
       return;
     }
+    if (
+      (config.toolKey === "protect_pdf" || config.toolKey === "unlock_pdf") &&
+      !password
+    ) {
+      alert("Please enter the PDF password");
+      return;
+    }
+
+
 
     setLoading(true);
 
     const formData = new FormData();
     formData.append("tool", config.toolKey);
+
+
+    if (config.toolKey === "protect_pdf" || config.toolKey === "unlock_pdf") {
+      formData.append("password", password);
+    }
+
 
     files.forEach((file) => {
       formData.append("files", file);
@@ -55,8 +73,18 @@ function Upload() {
       );
 
       if (!res.ok) {
-        throw new Error(`Processing failed with status ${res.status}`);
+        let errorMessage = "Processing failed";
+
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          
+        }
+
+        throw new Error(errorMessage);
       }
+
 
       const blob = await res.blob();
 
@@ -64,7 +92,7 @@ function Upload() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      
+
       // Set appropriate download filename based on tool
       let filename = "result";
       switch (config.toolKey) {
@@ -84,13 +112,21 @@ function Upload() {
         case "pdf_to_jpg":
           filename = "converted.jpg";
           break;
+        case "protect_pdf":
+          filename = "protected.pdf";
+          break;
         default:
           filename = "result.pdf";
       }
-      
+
       a.download = filename;
       a.click();
       window.URL.revokeObjectURL(url);
+
+      if (config.toolKey === "protect_pdf") {
+        setPassword("");
+      }
+
 
     } catch (err) {
       console.error("Processing error:", err);
@@ -104,7 +140,7 @@ function Upload() {
     <div className="tool-page min-h-screen bg-white text-black p-6">
       <div className="max-w-2xl mx-auto">
         <h1 className="text-3xl font-bold text-center mb-8 text-gray-800">{config.title}</h1>
-        
+
         <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 shadow-sm">
           <div className="mb-6">
             <label className="block text-gray-700 font-medium mb-2">
@@ -121,7 +157,7 @@ function Upload() {
               Accepted formats: {config.accept.replace(/\./g, '').replace(/,/g, ', ')}
             </p>
           </div>
-          
+
           {files.length > 0 && (
             <div className="mb-6">
               <h3 className="font-medium text-gray-700 mb-2">Selected Files:</h3>
@@ -134,16 +170,29 @@ function Upload() {
               </ul>
             </div>
           )}
-          
+          {(config.toolKey === "protect_pdf" || config.toolKey === "unlock_pdf") && (
+            <div className="mb-4">
+              <label className="block font-medium text-gray-700 mb-2">
+                Set PDF Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full p-2 border rounded"
+                placeholder="Enter password"
+              />
+            </div>
+          )}
+
           <div className="flex justify-center">
-            <button 
-              onClick={handleProcess} 
+            <button
+              onClick={handleProcess}
               disabled={loading || files.length === 0}
-              className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-                loading || files.length === 0
-                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  : "bg-blue-600 text-white hover:bg-blue-700"
-              }`}
+              className={`px-6 py-3 rounded-lg font-medium transition-colors ${loading || files.length === 0
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-blue-600 text-white hover:bg-blue-700"
+                }`}
             >
               {loading ? "Processing..." : "Process"}
             </button>
