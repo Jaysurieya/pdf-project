@@ -2,7 +2,9 @@ const express = require("express");
 const router = express.Router();
 const multer = require("multer");
 const uploadFiles = require("../Middleware/upload.middleware");
+const fs = require("fs");
 
+const comparePdf = require("../Services/Convert_from_pdf/pdfCompare.service");
 const unlockPdf = require("../Services/Convert_from_pdf/pdfUnlock.service");
 const pdfProtect = require("../Services/Convert_from_pdf/pdfProtect.service");
 
@@ -64,6 +66,25 @@ router.post("/unlock", uploadFiles, async (req, res) => {
 
 });
 
+router.post("/compare", uploadFiles, async (req, res) => {
+  try {
+    if (!req.files || req.files.length !== 2) {
+      return res.status(400).json({ message: "Upload exactly 2 PDF files" });
+    }
+
+    const [file1, file2] = req.files;
+
+    const result = await comparePdf(file1.path, file2.path);
+
+    fs.unlinkSync(file1.path);
+    fs.unlinkSync(file2.path);
+
+    res.json(result); // 🔥 IMPORTANT
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "PDF comparison failed" });
+  }
+});
 
 
 module.exports = router;

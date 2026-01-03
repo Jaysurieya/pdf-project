@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
 import { useState } from "react";
 import { TOOLS } from "../../lib/tools";
+import CompareResult from "./compareResults";
 
 function Upload() {
   const { tool } = useParams(); // word-to-pdf
@@ -23,6 +24,9 @@ function Upload() {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [password, setPassword] = useState("");
+  const [compareResult, setCompareResult] = useState(null);
+
+
 
 
   // handle file selection
@@ -30,6 +34,12 @@ function Upload() {
     const selectedFiles = Array.from(e.target.files);
     setFiles(selectedFiles);
   };
+  const handleCompareFileChange = (index, file) => {
+    const newFiles = [...files];
+    newFiles[index] = file;
+    setFiles(newFiles.filter(Boolean)); // remove empty slots
+  };
+
 
   // MAIN BUTTON CLICK LOGIC
   const handleProcess = async () => {
@@ -45,6 +55,11 @@ function Upload() {
       alert("Please enter the PDF password");
       return;
     }
+    if (config.toolKey === "compare_pdf" && files.length !== 2) {
+      alert("Please upload exactly 2 PDF files");
+      return;
+    }
+
 
 
 
@@ -79,10 +94,17 @@ function Upload() {
           const errorData = await res.json();
           errorMessage = errorData.message || errorMessage;
         } catch (e) {
-          
+
         }
 
         throw new Error(errorMessage);
+      }
+
+      if (config.toolKey === "compare_pdf") {
+        const data = await res.json();
+        setCompareResult(data);
+        setLoading(false);
+        return;
       }
 
 
@@ -146,13 +168,42 @@ function Upload() {
             <label className="block text-gray-700 font-medium mb-2">
               Select File(s)
             </label>
-            <input
-              type="file"
-              accept={config.accept}
-              multiple={config.multiple}
-              onChange={handleFileChange}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
+            {config.toolKey === "compare_pdf" ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="block font-medium text-gray-700 mb-1">
+                    Upload PDF 1
+                  </label>
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    onChange={(e) => handleCompareFileChange(0, e.target.files[0])}
+                    className="w-full p-3 border rounded-lg"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-medium text-gray-700 mb-1">
+                    Upload PDF 2
+                  </label>
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    onChange={(e) => handleCompareFileChange(1, e.target.files[0])}
+                    className="w-full p-3 border rounded-lg"
+                  />
+                </div>
+              </div>
+            ) : (
+              <input
+                type="file"
+                accept={config.accept}
+                multiple={config.multiple}
+                onChange={handleFileChange}
+                className="w-full p-3 border border-gray-300 rounded-lg"
+              />
+            )}
+
             <p className="text-sm text-gray-500 mt-2">
               Accepted formats: {config.accept.replace(/\./g, '').replace(/,/g, ', ')}
             </p>
@@ -184,22 +235,33 @@ function Upload() {
               />
             </div>
           )}
-
-          <div className="flex justify-center">
+          <div className="mt-6 text-center">
             <button
               onClick={handleProcess}
-              disabled={loading || files.length === 0}
-              className={`px-6 py-3 rounded-lg font-medium transition-colors ${loading || files.length === 0
-                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                : "bg-blue-600 text-white hover:bg-blue-700"
-                }`}
+              disabled={loading}
+              className={`px-6 py-3 rounded-lg text-white font-semibold transition
+      ${loading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"}
+    `}
             >
               {loading ? "Processing..." : "Process"}
             </button>
           </div>
+
+
+
         </div>
+        {config.toolKey === "compare_pdf" && compareResult &&
+          (
+
+            <CompareResult
+              removed={compareResult.removed}
+              added={compareResult.added}
+            />
+          )}
       </div>
+
     </div>
+
   );
 }
 
