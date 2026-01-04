@@ -2,6 +2,9 @@ import { useParams } from "react-router-dom";
 import { useState } from "react";
 import { TOOLS } from "../../lib/tools";
 import CompareResult from "./compareResults";
+import SignaturePad from "./SignaturePad";
+import PdfPreview from "./pdfPreview";
+
 
 function Upload() {
   const { tool } = useParams(); // word-to-pdf
@@ -25,6 +28,29 @@ function Upload() {
   const [loading, setLoading] = useState(false);
   const [password, setPassword] = useState("");
   const [compareResult, setCompareResult] = useState(null);
+  
+  const [signatureData, setSignatureData] = useState(null);
+  const [selectedPage, setSelectedPage] = useState(0);
+const [selectedPages, setSelectedPages] = useState([]);
+const [sigPos, setSigPos] = useState({});
+const [pageSize, setPageSize] = useState({
+  canvasWidth: 0,
+  canvasHeight: 0,
+  pdfWidth: 0,
+  pdfHeight: 0
+});
+
+const [pageCount, setPageCount] = useState(0);
+const [pagesToPlace, setPagesToPlace] = useState([]);
+const [currentPlacingPage, setCurrentPlacingPage] = useState(null);
+const [lockedPages, setLockedPages] = useState({});
+
+
+
+
+
+
+
 
 
 
@@ -39,6 +65,85 @@ function Upload() {
     newFiles[index] = file;
     setFiles(newFiles.filter(Boolean)); // remove empty slots
   };
+const handleSign = async () => {
+  if (!signatureData || selectedPages.length === 0) {
+    alert("Signature or pages missing");
+    return;
+  }
+
+  for (const p of selectedPages) {
+    if (!sigPos[p]) {
+      alert(`Place signature on Page ${p + 1}`);
+      return;
+    }
+  }
+
+  setLoading(true);
+
+  try {
+    const signatureBlob = await fetch(signatureData).then(r => r.blob());
+
+    // ✅ DEFINE SCALE ONCE
+    const scaleX = pageSize.pdfWidth / pageSize.canvasWidth;
+    const scaleY = pageSize.pdfHeight / pageSize.canvasHeight;
+
+    // ✅ BUILD PLACEMENTS
+    const placements = selectedPages.map(page => {
+  const scaleX = pageSize.pdfWidth / pageSize.canvasWidth;
+  const scaleY = pageSize.pdfHeight / pageSize.canvasHeight;
+
+  const canvasX = sigPos[page].x;
+  const canvasY = sigPos[page].y;
+
+  // ✅ convert canvas → pdf correctly
+  let pdfX = canvasX * scaleX;
+  let pdfY =
+    pageSize.pdfHeight -
+    (canvasY + 60) * scaleY;
+
+  // ✅ CLAMP so it NEVER goes outside page
+  pdfX = Math.max(0, Math.min(pdfX, pageSize.pdfWidth - 150 * scaleX));
+  pdfY = Math.max(0, Math.min(pdfY, pageSize.pdfHeight - 60 * scaleY));
+
+  return {
+    page,
+    x: pdfX,
+    y: pdfY
+  };
+});
+
+
+    const formData = new FormData();
+    formData.append("pdf", files[0]);
+    formData.append("signature", signatureBlob);
+    formData.append("placements", JSON.stringify(placements));
+    formData.append("width", 150 * scaleX);
+    formData.append("height", 60 * scaleY);
+
+    const res = await fetch("http://localhost:5000/api/security/sign", {
+      method: "POST",
+      body: formData
+    });
+
+    if (!res.ok) throw new Error("Signing failed");
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "signed.pdf";
+    a.click();
+
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error(err);
+    alert("Failed to sign PDF");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
 
   // MAIN BUTTON CLICK LOGIC
@@ -137,6 +242,8 @@ function Upload() {
         case "protect_pdf":
           filename = "protected.pdf";
           break;
+
+       
         default:
           filename = "result.pdf";
       }
@@ -221,6 +328,35 @@ function Upload() {
               </ul>
             </div>
           )}
+         {config.toolKey === "sign_pdf" && (
+  <div className="mb-6">
+    <label className="block font-medium text-gray-700 mb-2">
+      Draw Signature
+    </label>
+   <SignaturePad
+  onSave={(data) => {
+    if (selectedPages.length === 0) {
+      alert("Please select pages first");
+      return;
+    }
+
+    setSignatureData(data);
+
+    // 🔥 START PLACEMENT MODE
+   
+    setPagesToPlace(selectedPages);
+    setCurrentPlacingPage(selectedPages[0]);
+    setSelectedPage(selectedPages[0]);
+  }}
+/>
+
+  </div>
+)}
+
+
+
+
+
           {(config.toolKey === "protect_pdf" || config.toolKey === "unlock_pdf") && (
             <div className="mb-4">
               <label className="block font-medium text-gray-700 mb-2">
@@ -235,9 +371,91 @@ function Upload() {
               />
             </div>
           )}
+          {config.toolKey === "sign_pdf" && files.length === 1 && (
+  <PdfPreview
+  file={files[0]}
+  selectedPage={selectedPage}
+  setSelectedPage={setSelectedPage}
+  signatureData={signatureData}
+  sigPos={sigPos}
+setSigPos = {setSigPos}
+ selectedPages={selectedPages}
+  setPageSize={setPageSize}
+  setPageCount={setPageCount}
+  currentPlacingPage={currentPlacingPage}
+  lockedPages={lockedPages}
+/>
+
+)}
+{config.toolKey === "sign_pdf" && currentPlacingPage !== null && (
+  <div className="flex justify-between mt-4">
+    <p className="text-sm text-gray-600">
+      Placing signature on Page {currentPlacingPage + 1}
+    </p>
+
+    <button
+      className="px-4 py-2 bg-green-600 text-white rounded"
+      onClick={() => {
+        setLockedPages(prev => ({
+      ...prev,
+      [currentPlacingPage]: true
+    }));
+        const remaining = pagesToPlace.filter(
+          p => p !== currentPlacingPage
+        );
+
+        if (remaining.length > 0) {
+          setCurrentPlacingPage(remaining[0]);
+          setSelectedPage(remaining[0]);
+        } else {
+          setCurrentPlacingPage(null); // placement done
+        }
+
+        setPagesToPlace(remaining);
+      }}
+    >
+      Save position
+    </button>
+  </div>
+)}
+
+
+{config.toolKey === "sign_pdf" && pageCount > 0 && (
+  <div className="mb-4">
+    <label className="font-medium block mb-2">
+      Select Pages
+    </label>
+    {[...Array(pageCount)].map((_, i) => (
+      <label key={i} className="block">
+        <input
+          type="checkbox"
+          onChange={(e) => {
+  let updated;
+
+  if (e.target.checked) {
+    updated = [...selectedPages, i];
+  } else {
+    updated = selectedPages.filter(p => p !== i);
+  }
+
+  setSelectedPages(updated);
+  setPagesToPlace(updated);
+  setCurrentPlacingPage(updated[0] ?? null);
+  setSelectedPage(updated[0] ?? 0);
+}}
+
+        />
+        Page {i + 1}
+      </label>
+    ))}
+  </div>
+)}
+
+
+
           <div className="mt-6 text-center">
             <button
-              onClick={handleProcess}
+              onClick={config.toolKey === "sign_pdf" ? handleSign : handleProcess}
               disabled={loading}
               className={`px-6 py-3 rounded-lg text-white font-semibold transition
       ${loading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"}

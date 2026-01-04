@@ -3,10 +3,12 @@ const router = express.Router();
 const multer = require("multer");
 const uploadFiles = require("../Middleware/upload.middleware");
 const fs = require("fs");
+const upload = multer({ dest: "uploads/" });
 
 const comparePdf = require("../Services/Convert_from_pdf/pdfCompare.service");
 const unlockPdf = require("../Services/Convert_from_pdf/pdfUnlock.service");
 const pdfProtect = require("../Services/Convert_from_pdf/pdfProtect.service");
+const signPdf = require("../Services/Convert_from_pdf/signPdf.service");
 
 router.post("/protect", uploadFiles, async (req, res) => {
   try {
@@ -85,6 +87,51 @@ router.post("/compare", uploadFiles, async (req, res) => {
     res.status(500).json({ message: "PDF comparison failed" });
   }
 });
+
+router.post(
+  "/sign",
+  upload.fields([
+    { name: "pdf", maxCount: 1 },
+    { name: "signature", maxCount: 1 }
+  ]),
+  async (req, res) => {
+    try {
+      const pdfFile = req.files.pdf[0];
+      const signatureFile = req.files.signature[0];
+
+      const placements = JSON.parse(req.body.placements);
+
+      const { width, height } = req.body;
+
+const signedPdf = await signPdf(
+  pdfFile.path,
+  signatureFile.path,
+  placements,
+  {
+    width: Number(width),
+    height: Number(height)
+  }
+);
+
+      console.log("PLACEMENTS:", placements);
+
+      fs.unlinkSync(pdfFile.path);
+      fs.unlinkSync(signatureFile.path);
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=signed.pdf"
+      );
+
+      res.send(Buffer.from(signedPdf));
+    } catch (err) {
+      console.error("PDF signing failed:", err);
+      res.status(500).json({ message: "PDF signing failed" });
+    }
+  }
+);
+
 
 
 module.exports = router;
