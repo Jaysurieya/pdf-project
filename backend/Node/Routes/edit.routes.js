@@ -21,7 +21,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// ADD WATERMARK
+// ADD WATERMARK Element
 router.post("/watermark", upload.single("files"), async (req, res) => {
   try {
     const filePath = req.file.path;
