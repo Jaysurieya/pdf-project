@@ -33,9 +33,39 @@ function Upload() {
     config.hasOptions ? config.options[0].value : null
   );
 
+  // Watermark states
+  const [watermarkText, setWatermarkText] = useState("WATERMARK");
+  const [fontSize, setFontSize] = useState(30);
+  const [opacity, setOpacity] = useState(0.5);
+  const [color, setColor] = useState("gray");
+  const [position, setPosition] = useState("center");
+
+  // Crop states
+  const [cropLeft, setCropLeft] = useState(0);
+  const [cropRight, setCropRight] = useState(0);
+  const [cropTop, setCropTop] = useState(0);
+  const [cropBottom, setCropBottom] = useState(0);
+
+  // Basic Edit states
+  const [editType, setEditType] = useState("metadata");
+  const [searchText, setSearchText] = useState("");
+  const [replaceText, setReplaceText] = useState("");
+  const [textYPosition, setTextYPosition] = useState(100);
+  const [metadata, setMetadata] = useState({
+    title: "",
+    author: "",
+    subject: "",
+    keywords: "",
+    creator: "",
+    producer: ""
+  });
+
   // Tool behavior detection
   const needsPages = tool === "remove-pages" || tool === "split-pdf";
   const needsOrder = tool === "organize-pdf";
+  const needsWatermark = tool === "add-watermark";
+  const needsCrop = tool === "crop-pdf";
+  const needsEdit = tool === "edit-pdf";
 
   // FILE CHANGE
   const handleFileChange = (e) => {
@@ -98,6 +128,29 @@ function Upload() {
 
     if (config.hasOptions) {
       formData.append("angle", selectedOption);
+    }
+
+    if (needsWatermark) {
+      formData.append("watermarkText", watermarkText);
+      formData.append("fontSize", fontSize);
+      formData.append("opacity", opacity);
+      formData.append("color", color);
+      formData.append("position", position);
+    }
+
+    if (needsCrop) {
+      formData.append("left", cropLeft);
+      formData.append("right", cropRight);
+      formData.append("top", cropTop);
+      formData.append("bottom", cropBottom);
+    }
+
+    if (needsEdit) {
+      formData.append("editType", editType);
+      formData.append("searchText", searchText);
+      formData.append("replaceText", replaceText);
+      formData.append("textYPosition", textYPosition);
+      formData.append("metadata", JSON.stringify(metadata));
     }
 
     try {
@@ -224,6 +277,278 @@ function Upload() {
                 onChange={(e) => setOrderInput(e.target.value)}
                 className="w-full p-3 border border-gray-300 rounded-lg"
               />
+            </div>
+          )}
+
+          {/* WATERMARK INPUT */}
+          {needsWatermark && (
+            <div className="mb-6 space-y-4">
+              <div>
+                <label className="block text-gray-700 font-medium mb-2">Watermark Text</label>
+                <input
+                  type="text"
+                  value={watermarkText}
+                  onChange={(e) => setWatermarkText(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg"
+                  placeholder="Enter watermark text"
+                />
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">Font Size</label>
+                  <input
+                    type="number"
+                    value={fontSize}
+                    onChange={(e) => setFontSize(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-lg"
+                    min="10"
+                    max="100"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">Opacity</label>
+                  <input
+                    type="number"
+                    value={opacity}
+                    onChange={(e) => setOpacity(parseFloat(e.target.value))}
+                    className="w-full p-3 border border-gray-300 rounded-lg"
+                    min="0.1"
+                    max="1"
+                    step="0.1"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">Color</label>
+                  <select
+                    value={color}
+                    onChange={(e) => setColor(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-lg"
+                  >
+                    <option value="gray">Gray</option>
+                    <option value="red">Red</option>
+                    <option value="blue">Blue</option>
+                    <option value="green">Green</option>
+                    <option value="black">Black</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">Position</label>
+                  <select
+                    value={position}
+                    onChange={(e) => setPosition(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-lg"
+                  >
+                    <option value="center">Center</option>
+                    <option value="top-left">Top Left</option>
+                    <option value="top-right">Top Right</option>
+                    <option value="bottom-left">Bottom Left</option>
+                    <option value="bottom-right">Bottom Right</option>
+                    <option value="diagonal">Diagonal</option>
+                    <option value="full-page-diagonal">Full Page Diagonal</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* CROP INPUT */}
+          {needsCrop && (
+            <div className="mb-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">Left (points)</label>
+                  <input
+                    type="number"
+                    value={cropLeft}
+                    onChange={(e) => setCropLeft(parseFloat(e.target.value) || 0)}
+                    className="w-full p-3 border border-gray-300 rounded-lg"
+                    min="0"
+                    step="1"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">Right (points)</label>
+                  <input
+                    type="number"
+                    value={cropRight}
+                    onChange={(e) => setCropRight(parseFloat(e.target.value) || 0)}
+                    className="w-full p-3 border border-gray-300 rounded-lg"
+                    min="0"
+                    step="1"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">Top (points)</label>
+                  <input
+                    type="number"
+                    value={cropTop}
+                    onChange={(e) => setCropTop(parseFloat(e.target.value) || 0)}
+                    className="w-full p-3 border border-gray-300 rounded-lg"
+                    min="0"
+                    step="1"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">Bottom (points)</label>
+                  <input
+                    type="number"
+                    value={cropBottom}
+                    onChange={(e) => setCropBottom(parseFloat(e.target.value) || 0)}
+                    className="w-full p-3 border border-gray-300 rounded-lg"
+                    min="0"
+                    step="1"
+                  />
+                </div>
+              </div>
+              
+              <div className="text-sm text-gray-500 mt-2">
+                <p>Note: 1 inch = 72 points. Enter the amount to crop from each edge.</p>
+              </div>
+            </div>
+          )}
+
+          {/* BASIC EDIT INPUT */}
+          {needsEdit && (
+            <div className="mb-6 space-y-4">
+              <div>
+                <label className="block text-gray-700 font-medium mb-2">Edit Type</label>
+                <select
+                  value={editType}
+                  onChange={(e) => setEditType(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg"
+                >
+                  <option value="metadata">Metadata</option>
+                  <option value="text-replace">Text Replace (Overlay)</option>
+                </select>
+              </div>
+              
+              {editType === "text-replace" && (
+                <div className="space-y-4">
+                  <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg">
+                    <p className="text-sm text-blue-700">
+                      <strong>Note:</strong> This adds new text to the PDF. Enter the text to add and specify position coordinates.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 font-medium mb-2">Text to Add</label>
+                    <input
+                      type="text"
+                      value={searchText}
+                      onChange={(e) => setSearchText(e.target.value)}
+                      className="w-full p-3 border border-gray-300 rounded-lg"
+                      placeholder="Enter text to add to the PDF"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2">Position X</label>
+                      <input
+                        type="number"
+                        value={replaceText}
+                        onChange={(e) => setReplaceText(e.target.value)}
+                        className="w-full p-3 border border-gray-300 rounded-lg"
+                        placeholder="X coordinate"
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2">Position Y</label>
+                      <input
+                        type="number"
+                        value={textYPosition}
+                        onChange={(e) => setTextYPosition(parseInt(e.target.value) || 100)}
+                        className="w-full p-3 border border-gray-300 rounded-lg"
+                        placeholder="Y coordinate"
+                        min="0"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {editType === "metadata" && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-gray-700 font-medium mb-2">Title</label>
+                    <input
+                      type="text"
+                      value={metadata.title}
+                      onChange={(e) => setMetadata({...metadata, title: e.target.value})}
+                      className="w-full p-3 border border-gray-300 rounded-lg"
+                      placeholder="Enter document title"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 font-medium mb-2">Author</label>
+                    <input
+                      type="text"
+                      value={metadata.author}
+                      onChange={(e) => setMetadata({...metadata, author: e.target.value})}
+                      className="w-full p-3 border border-gray-300 rounded-lg"
+                      placeholder="Enter author name"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 font-medium mb-2">Subject</label>
+                    <input
+                      type="text"
+                      value={metadata.subject}
+                      onChange={(e) => setMetadata({...metadata, subject: e.target.value})}
+                      className="w-full p-3 border border-gray-300 rounded-lg"
+                      placeholder="Enter subject"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 font-medium mb-2">Keywords</label>
+                    <input
+                      type="text"
+                      value={metadata.keywords}
+                      onChange={(e) => setMetadata({...metadata, keywords: e.target.value})}
+                      className="w-full p-3 border border-gray-300 rounded-lg"
+                      placeholder="Enter keywords separated by commas"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2">Creator</label>
+                      <input
+                        type="text"
+                        value={metadata.creator}
+                        onChange={(e) => setMetadata({...metadata, creator: e.target.value})}
+                        className="w-full p-3 border border-gray-300 rounded-lg"
+                        placeholder="Enter creator"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2">Producer</label>
+                      <input
+                        type="text"
+                        value={metadata.producer}
+                        onChange={(e) => setMetadata({...metadata, producer: e.target.value})}
+                        className="w-full p-3 border border-gray-300 rounded-lg"
+                        placeholder="Enter producer"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

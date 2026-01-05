@@ -3,6 +3,7 @@ const cors = require("cors");
 const organizeRoutes = require("./Routes/organize.routes");
 const convertRoutes = require("./Routes/convert.routes");
 const rotatePdfRoutes = require("./Routes/rotatepdf");
+const editRoutes = require("./Routes/edit.routes");
 
 
 const app = express();
@@ -13,6 +14,7 @@ app.use(express.json());
 app.use("/api/convert", convertRoutes);
 app.use("/api/organize", organizeRoutes);
 app.use("/api/pdf", rotatePdfRoutes);
+app.use("/api/edit", editRoutes);
 
 
 const PORT = process.env.PORT || 3000;
