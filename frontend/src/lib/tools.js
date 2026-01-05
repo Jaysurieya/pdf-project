@@ -143,7 +143,13 @@ export const TOOLS = {
     accept: ".pdf",
     multiple: false,
     toolKey: "rotate_pdf",
-    backendRoute: "/api/edit/rotate"
+    backendRoute: "/api/pdf/rotate",
+    hasOptions: true,
+    options: [
+      { label: "Rotate 90°", value: 90 },
+      { label: "Rotate 180°", value: 180 },
+      { label: "Rotate 270°", value: 270 }
+    ]
   },
   "crop-pdf": {
     title: "Crop PDF",

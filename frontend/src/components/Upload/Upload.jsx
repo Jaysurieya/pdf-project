@@ -10,8 +10,12 @@ function Upload() {
     return (
       <div className="tool-page min-h-screen flex items-center justify-center bg-white text-black">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-500 mb-4">Tool Not Found</h1>
-          <p className="text-gray-600">The requested tool "{tool}" does not exist.</p>
+          <h1 className="text-2xl font-bold text-red-500 mb-4">
+            Tool Not Found
+          </h1>
+          <p className="text-gray-600">
+            The requested tool "{tool}" does not exist.
+          </p>
         </div>
       </div>
     );
@@ -24,39 +28,36 @@ function Upload() {
   const [pagesInput, setPagesInput] = useState("");
   const [orderInput, setOrderInput] = useState("");
 
-  // Tool behavior detection
-  const needsPages =
-    tool === "remove-pages" ||
-    tool === "split-pdf";
+  // Rotate / option-based tools
+  const [selectedOption, setSelectedOption] = useState(
+    config.hasOptions ? config.options[0].value : null
+  );
 
+  // Tool behavior detection
+  const needsPages = tool === "remove-pages" || tool === "split-pdf";
   const needsOrder = tool === "organize-pdf";
 
-  // ADD / APPEND FILES LOGIC
+  // FILE CHANGE
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
 
     if (config.multiple) {
-      // append files, avoid duplicates (name + size)
       setFiles((prev) => {
-        const existing = new Map(
+        const map = new Map(
           prev.map((f) => [`${f.name}-${f.size}`, f])
         );
-
-        selectedFiles.forEach((f) => {
-          existing.set(`${f.name}-${f.size}`, f);
-        });
-
-        return Array.from(existing.values());
+        selectedFiles.forEach((f) =>
+          map.set(`${f.name}-${f.size}`, f)
+        );
+        return Array.from(map.values());
       });
     } else {
       setFiles(selectedFiles.slice(0, 1));
     }
 
-    // reset input so same file can be re-added if needed
     e.target.value = "";
   };
 
-  // REMOVE SINGLE FILE
   const removeFile = (index) => {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   };
@@ -83,7 +84,6 @@ function Upload() {
     const formData = new FormData();
     formData.append("tool", config.toolKey);
 
-    // 👇 SAME VARIABLE, MULTIPLE FILES
     files.forEach((file) => {
       formData.append("files", file);
     });
@@ -96,22 +96,33 @@ function Upload() {
       formData.append("order", orderInput);
     }
 
+    if (config.hasOptions) {
+      formData.append("angle", selectedOption);
+    }
+
     try {
       const res = await fetch(
-        `http://localhost:5000${config.backendRoute}`,
+        `http://localhost:3000${config.backendRoute}`,
         {
           method: "POST",
           body: formData,
         }
       );
 
+      // 🔐 SAFE ERROR HANDLING (JSON OR BINARY)
       if (!res.ok) {
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const errData = await res.json();
+          throw new Error(errData.message || "Processing failed");
+        }
         throw new Error(`Processing failed with status ${res.status}`);
       }
 
+      // ✅ ALWAYS HANDLE AS BLOB (PDF / FILE)
       const blob = await res.blob();
-
       const url = window.URL.createObjectURL(blob);
+
       const a = document.createElement("a");
       a.href = url;
 
@@ -161,36 +172,38 @@ function Upload() {
             <label className="block text-gray-700 font-medium mb-2">
               Select File(s)
             </label>
-
-            <div className="flex gap-3 items-center">
-              <input
-                type="file"
-                accept={config.accept}
-                multiple={config.multiple}
-                onChange={handleFileChange}
-                className="w-full p-3 border border-gray-300 rounded-lg"
-              />
-
-              {/* PLUS BUTTON */}
-              {config.multiple && (
-                <span className="text-sm text-gray-500 whitespace-nowrap">
-                  + Add more
-                </span>
-              )}
-            </div>
-
-            <p className="text-sm text-gray-500 mt-2">
-              Accepted formats:{" "}
-              {config.accept.replace(/\./g, "").replace(/,/g, ", ")}
-            </p>
+            <input
+              type="file"
+              accept={config.accept}
+              multiple={config.multiple}
+              onChange={handleFileChange}
+              className="w-full p-3 border border-gray-300 rounded-lg"
+            />
           </div>
+
+          {/* OPTIONS (Rotate PDF) */}
+          {config.hasOptions && (
+            <div className="mb-6">
+              <label className="block text-gray-700 font-medium mb-2">
+                Select Option
+              </label>
+              <select
+                value={selectedOption}
+                onChange={(e) => setSelectedOption(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg"
+              >
+                {config.options.map((opt, idx) => (
+                  <option key={idx} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* PAGE INPUT */}
           {needsPages && (
             <div className="mb-6">
-              <label className="block text-gray-700 font-medium mb-2">
-                Enter pages or range
-              </label>
               <input
                 type="text"
                 placeholder="e.g. 1,3,5 or 1-4"
@@ -204,9 +217,6 @@ function Upload() {
           {/* ORDER INPUT */}
           {needsOrder && (
             <div className="mb-6">
-              <label className="block text-gray-700 font-medium mb-2">
-                Enter new page order
-              </label>
               <input
                 type="text"
                 placeholder="e.g. 3,1,4,2"
@@ -220,7 +230,9 @@ function Upload() {
           {/* FILE LIST */}
           {files.length > 0 && (
             <div className="mb-6">
-              <h3 className="font-medium text-gray-700 mb-2">Selected Files:</h3>
+              <h3 className="font-medium text-gray-700 mb-2">
+                Selected Files:
+              </h3>
               <ul className="space-y-2">
                 {files.map((file, index) => (
                   <li
@@ -228,7 +240,8 @@ function Upload() {
                     className="flex justify-between items-center text-sm bg-white p-2 rounded border"
                   >
                     <span>
-                      {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                      {file.name} (
+                      {(file.size / 1024 / 1024).toFixed(2)} MB)
                     </span>
                     <button
                       onClick={() => removeFile(index)}

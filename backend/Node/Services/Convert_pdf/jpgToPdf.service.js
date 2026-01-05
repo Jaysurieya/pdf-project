@@ -19,7 +19,7 @@ module.exports = async (imagePath) => {
 
   const pdfBytes = await pdfDoc.save();
 
-  const outputPath = `/tmp/${uuid()}.pdf`;
+  const outputPath = `tmp/${uuid()}.pdf`;
   fs.writeFileSync(outputPath, pdfBytes);
 
   return outputPath;
