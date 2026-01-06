@@ -184,23 +184,32 @@ router.post("/crop", upload.single("files"), async (req, res) => {
 
     const pages = pdfDoc.getPages();
     
+    // Create new pages with cropped content
+    const newPages = [];
+    
     for (let i = 0; i < pages.length; i++) {
       const page = pages[i];
       const { width, height } = page.getSize();
       
+      // Convert percentages to actual points
+      const leftPoints = (left / 100) * width;
+      const rightPoints = (right / 100) * width;
+      const topPoints = (top / 100) * height;
+      const bottomPoints = (bottom / 100) * height;
+      
       // Calculate new dimensions after cropping
-      const newWidth = width - left - right;
-      const newHeight = height - top - bottom;
+      const newWidth = width - leftPoints - rightPoints;
+      const newHeight = height - topPoints - bottomPoints;
       
       // Create a new page with the cropped dimensions
       const newPage = pdfDoc.addPage([newWidth, newHeight]);
       
       // Embed the original page content onto the new page
       const embeddedPage = await pdfDoc.embedPage(page, {
-        left: left,
-        bottom: bottom,
-        right: width - right,
-        top: height - top
+        left: leftPoints,
+        bottom: bottomPoints,
+        right: width - rightPoints,
+        top: height - topPoints
       });
       
       // Draw the cropped content on the new page
@@ -211,11 +220,12 @@ router.post("/crop", upload.single("files"), async (req, res) => {
         height: newHeight
       });
       
-      // Remove the old page
-      pdfDoc.removePage(i);
-      
-      // Adjust index since we removed a page
-      i--;
+      newPages.push(newPage);
+    }
+    
+    // Remove all original pages after processing
+    for (let i = pages.length - 1; i >= 0; i--) {
+      pdfDoc.removePage(0); // Always remove the first page since indices shift
     }
 
     const croppedPdf = await pdfDoc.save();

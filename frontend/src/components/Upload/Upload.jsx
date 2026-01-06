@@ -359,61 +359,80 @@ function Upload() {
 
           {/* CROP INPUT */}
           {needsCrop && (
-            <div className="mb-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="mb-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">Left (points)</label>
+                  <label className="block text-gray-700 font-medium mb-2">Left Crop: {cropLeft}%</label>
                   <input
-                    type="number"
+                    type="range"
+                    min="0"
+                    max="25"
                     value={cropLeft}
-                    onChange={(e) => setCropLeft(parseFloat(e.target.value) || 0)}
-                    className="w-full p-3 border border-gray-300 rounded-lg"
-                    min="0"
-                    step="1"
+                    onChange={(e) => setCropLeft(parseFloat(e.target.value))}
+                    className="w-full"
                   />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>0%</span>
+                    <span>25%</span>
+                  </div>
                 </div>
                 
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">Right (points)</label>
+                  <label className="block text-gray-700 font-medium mb-2">Right Crop: {cropRight}%</label>
                   <input
-                    type="number"
+                    type="range"
+                    min="0"
+                    max="25"
                     value={cropRight}
-                    onChange={(e) => setCropRight(parseFloat(e.target.value) || 0)}
-                    className="w-full p-3 border border-gray-300 rounded-lg"
-                    min="0"
-                    step="1"
+                    onChange={(e) => setCropRight(parseFloat(e.target.value))}
+                    className="w-full"
                   />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>0%</span>
+                    <span>25%</span>
+                  </div>
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">Top (points)</label>
+                  <label className="block text-gray-700 font-medium mb-2">Top Crop: {cropTop}%</label>
                   <input
-                    type="number"
-                    value={cropTop}
-                    onChange={(e) => setCropTop(parseFloat(e.target.value) || 0)}
-                    className="w-full p-3 border border-gray-300 rounded-lg"
+                    type="range"
                     min="0"
-                    step="1"
+                    max="25"
+                    value={cropTop}
+                    onChange={(e) => setCropTop(parseFloat(e.target.value))}
+                    className="w-full"
                   />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>0%</span>
+                    <span>25%</span>
+                  </div>
                 </div>
                 
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">Bottom (points)</label>
+                  <label className="block text-gray-700 font-medium mb-2">Bottom Crop: {cropBottom}%</label>
                   <input
-                    type="number"
-                    value={cropBottom}
-                    onChange={(e) => setCropBottom(parseFloat(e.target.value) || 0)}
-                    className="w-full p-3 border border-gray-300 rounded-lg"
+                    type="range"
                     min="0"
-                    step="1"
+                    max="25"
+                    value={cropBottom}
+                    onChange={(e) => setCropBottom(parseFloat(e.target.value))}
+                    className="w-full"
                   />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>0%</span>
+                    <span>25%</span>
+                  </div>
                 </div>
               </div>
               
-              <div className="text-sm text-gray-500 mt-2">
-                <p>Note: 1 inch = 72 points. Enter the amount to crop from each edge.</p>
+              <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg">
+                <p className="text-sm text-blue-700">
+                  <strong>Preview:</strong> Current crop: {cropLeft}% left, {cropRight}% right, {cropTop}% top, {cropBottom}% bottom.
+                  Page will be reduced by {cropLeft + cropRight}% width and {cropTop + cropBottom}% height.
+                </p>
               </div>
             </div>
           )}
