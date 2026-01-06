@@ -4,7 +4,6 @@ const multer = require("multer");
 const uploadFiles = require("../Middleware/upload.middleware");
 const fs = require("fs");
 const upload = multer({ dest: "uploads/" });
-const { PDFDocument } = require("pdf-lib");
 
 const comparePdf = require("../Services/Convert_from_pdf/pdfCompare.service");
 const unlockPdf = require("../Services/Convert_from_pdf/pdfUnlock.service");
@@ -88,62 +87,57 @@ router.post("/compare", uploadFiles, async (req, res) => {
     res.status(500).json({ message: "PDF comparison failed" });
   }
 });
-router.post("/sign", upload.single("pdf"), async (req, res) => {
-  try {
-    const { signatureBase64, placements } = req.body;
 
-    if (!req.file || !signatureBase64 || !placements) {
-      return res.status(400).json({ message: "Missing data" });
-    }
+router.post(
+  "/sign",
+  upload.fields([
+    { name: "pdf", maxCount: 1 },
+    { name: "signature", maxCount: 1 }
+  ]),
+  async (req, res) => {
+    try {
+      const pdfFile = req.files.pdf[0];
+      const signatureFile = req.files.signature[0];
 
-    const placementArr = JSON.parse(placements);
+      const placements = JSON.parse(req.body.placements);
 
-    // Read PDF
-    const pdfBytes = fs.readFileSync(req.file.path);
-    const pdfDoc = await PDFDocument.load(pdfBytes);
+     const sigW = Number(req.body.sigW);
+const sigH = Number(req.body.sigH);
 
-    // Embed signature
-    const signatureImage = await pdfDoc.embedPng(
-      signatureBase64.replace(/^data:image\/png;base64,/, "")
-    );
+if (Number.isNaN(sigW) || Number.isNaN(sigH)) {
+  throw new Error("Invalid signature size");
+}
 
-    const pages = pdfDoc.getPages();
-
-    placementArr.forEach((p) => {
-      const page = pages[p.page];
-      if (!page) return;
-
-      const { width, height } = page.getSize();
-
-      const sigWidth = p.widthPercent * width;
-      const sigHeight = p.heightPercent * height;
-
-      const x = p.xPercent * width;
-      const y = height - (p.yPercent * height) - sigHeight;
-
-      page.drawImage(signatureImage, {
-        x,
-        y,
-        width: sigWidth,
-        height: sigHeight
-      });
-    });
-
-    const signedPdf = await pdfDoc.save();
-
-    // Cleanup uploaded file
-    fs.unlinkSync(req.file.path);
-
-    res.set({
-      "Content-Type": "application/pdf",
-      "Content-Disposition": "attachment; filename=signed.pdf"
-    });
-
-    res.send(Buffer.from(signedPdf));
-  } catch (err) {
-    console.error("SIGN PDF ERROR:", err);
-    res.status(500).json({ message: "Failed to sign PDF" });
+const signedPdf = await signPdf(
+  pdfFile.path,
+  signatureFile.path,
+  placements,
+  {
+    width: sigW,
+    height: sigH
   }
-});
+);
+
+
+      console.log("PLACEMENTS:", placements);
+
+      fs.unlinkSync(pdfFile.path);
+      fs.unlinkSync(signatureFile.path);
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=signed.pdf"
+      );
+
+      res.send(Buffer.from(signedPdf));
+    } catch (err) {
+      console.error("PDF signing failed:", err);
+      res.status(500).json({ message: "PDF signing failed" });
+    }
+  }
+);
+
+
 
 module.exports = router;

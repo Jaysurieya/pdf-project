@@ -8,7 +8,7 @@ const securityRoutes = require("./Routes/security.routes");
 const app = express();
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
 
 app.use("/api/convert", convertRoutes);
 app.use("/api/security",securityRoutes);

@@ -1,128 +1,139 @@
-import { useEffect, useState,useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import Draggable from "react-draggable";
 import pdfjsLib from "../../utils/pdfjs";
 
+const SIGN_WIDTH = 150;
+const SIGN_HEIGHT = 60;
 
 export default function PdfPreview({
   file,
   selectedPage,
   setSelectedPage,
-   selectedPages,
   signatureData,
-  sigPos,
-  setSigPos,
-  setPageSize,
-  setPageCount,
-  currentPlacingPage,
-  lockedPages  
+  onPlacement
 }) {
   const [pages, setPages] = useState([]);
-  const nodeRef = useRef(null);
+  const pageImgRef = useRef(null);
+  const sigNodeRef = useRef(null); // 🔥 REQUIRED
 
-useEffect(() => {
-  if (!file) return;
+  // reset pages on file change
+  useEffect(() => {
+    setPages([]);
+  }, [file]);
 
-  const reader = new FileReader();
+  // load PDF
+  useEffect(() => {
+    if (!file || !(file instanceof File)) return;
 
-  reader.onload = async () => {
-    try {
-      const uint8Array = new Uint8Array(reader.result);
-      const pdf = await pdfjsLib.getDocument({ data: uint8Array }).promise;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const pdf = await pdfjsLib
+          .getDocument({ data: new Uint8Array(reader.result) })
+          .promise;
 
-      setPageCount(pdf.numPages);
+        const imgs = [];
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const viewport = page.getViewport({ scale: 1.5 });
 
-      // ✅ GET FIRST PAGE FOR SIZE REFERENCE
-      const firstPage = await pdf.getPage(1);
-      const firstViewport = firstPage.getViewport({ scale: 1.2 });
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
 
-      setPageSize({
-        canvasWidth: firstViewport.width,
-        canvasHeight: firstViewport.height,
-        pdfWidth: firstPage.view[2],
-        pdfHeight: firstPage.view[3]
-      });
+          await page.render({ canvasContext: ctx, viewport }).promise;
+          imgs.push(canvas.toDataURL());
+        }
 
-      // ✅ RENDER ALL PAGES
-      const imgs = [];
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const viewport = page.getViewport({ scale: 1.2 });
-
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-
-        await page.render({ canvasContext: ctx, viewport }).promise;
-
-        imgs.push({
-          img: canvas.toDataURL(),
-          width: canvas.width,
-          height: canvas.height
-        });
+        setPages(imgs);
+      } catch (err) {
+        console.error("PDF render error:", err);
       }
+    };
 
-      setPages(imgs);
-    } catch (err) {
-      console.error("PDF render error:", err);
-    }
+    reader.readAsArrayBuffer(file);
+  }, [file]);
+
+  // calculate placement
+  const updatePlacement = () => {
+    if (!sigNodeRef.current || !pageImgRef.current) return;
+
+    const sigRect = sigNodeRef.current.getBoundingClientRect();
+    const pageRect = pageImgRef.current.getBoundingClientRect();
+
+    const x = sigRect.left - pageRect.left;
+    const y = sigRect.top - pageRect.top;
+
+    onPlacement({
+      page: selectedPage,
+      xPercent: x / pageRect.width,
+      yPercent: y / pageRect.height,
+      widthPercent: SIGN_WIDTH / pageRect.width,
+      heightPercent: SIGN_HEIGHT / pageRect.height
+    });
   };
 
-  reader.readAsArrayBuffer(file);
-}, [file]);
-
-
+  // ensure placement after save
+  useEffect(() => {
+    if (signatureData && pages[selectedPage]) {
+      setTimeout(updatePlacement, 0);
+    }
+  }, [signatureData, selectedPage, pages]);
 
   return (
     <div className="flex gap-4">
-      <div className="flex-1 border relative">
-        {pages[selectedPage] && (
+      {/* PDF PAGE */}
+      <div className="flex-1 border relative min-h-[500px]">
+        {pages[selectedPage] ? (
           <div className="relative">
-            <img src={pages[selectedPage].img} className="w-full" />
-        {signatureData && selectedPages.includes(selectedPage) && (
-  <Draggable
-  nodeRef={nodeRef}
-  bounds="parent"
-  disabled={lockedPages?.[selectedPage]}
-  position={sigPos[selectedPage] || { x: 50, y: 50 }}
-  onStop={(e, data) =>
-    setSigPos(prev => ({
-      ...prev,
-      [selectedPage]: { x: data.x, y: data.y }
-    }))
-  }
->
+            <img
+              ref={pageImgRef}
+              src={pages[selectedPage]}
+              className="w-full select-none"
+              draggable={false}
+            />
 
-   <img
-  ref={nodeRef}
-  src={signatureData}
-  style={{
-    position: "absolute",
-    width: 150,
-    cursor: lockedPages?.[selectedPage] ? "default" : "move",
-    opacity: lockedPages?.[selectedPage] ? 0.9 : 1
-  }}
-/>
-
-  </Draggable>
-)}
-
-
-
-
-
+            {/* SIGNATURE */}
+            {signatureData && (
+              <Draggable
+                nodeRef={sigNodeRef}   // 🔥 FIX
+                bounds="parent"
+                defaultPosition={{ x: 50, y: 50 }}
+                onDrag={updatePlacement}
+                onStop={updatePlacement}
+              >
+                <img
+                  ref={sigNodeRef}     // 🔥 SAME REF
+                  src={signatureData}
+                  alt="signature"
+                  style={{
+                    width: SIGN_WIDTH,
+                    height: SIGN_HEIGHT,
+                    cursor: "move",
+                    position: "absolute",
+                    zIndex: 20
+                  }}
+                />
+              </Draggable>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center justify-center h-full text-gray-500">
+            Loading PDF preview…
           </div>
         )}
       </div>
 
+      {/* THUMBNAILS */}
       <div className="w-32 overflow-y-auto">
         {pages.map((p, i) => (
           <img
             key={i}
-            src={p.img}
+            src={p}
             onClick={() => setSelectedPage(i)}
-            className={`cursor-pointer mb-2 border ${
-              selectedPage === i ? "border-blue-500" : ""
+            className={`mb-2 cursor-pointer border ${
+              selectedPage === i ? "border-blue-500" : "border-gray-300"
             }`}
           />
         ))}
