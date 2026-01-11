@@ -5,6 +5,7 @@ const uploadFiles = require("../Middleware/upload.middleware");
 const fs = require("fs");
 const upload = multer({ dest: "uploads/" });
 const { PDFDocument } = require("pdf-lib");
+const uploadRedact = multer({ storage: multer.memoryStorage() });
 
 const comparePdf = require("../Services/Convert_from_pdf/pdfCompare.service");
 const unlockPdf = require("../Services/Convert_from_pdf/pdfUnlock.service");
@@ -145,5 +146,39 @@ router.post("/sign", upload.single("pdf"), async (req, res) => {
     res.status(500).json({ message: "Failed to sign PDF" });
   }
 });
+
+router.post("/redact", uploadRedact.array("pages"), async (req, res) => {
+  try {
+    const { PDFDocument } = require("pdf-lib");
+
+    const pdfDoc = await PDFDocument.create();
+
+    for (let file of req.files) {
+      const imgBytes = file.buffer;
+
+      const page = pdfDoc.addPage();
+      const pngImage = await pdfDoc.embedPng(imgBytes);
+
+      const { width, height } = pngImage.scale(1);
+
+      page.drawImage(pngImage, {
+        x: 0,
+        y: 0,
+        width,
+        height
+      });
+    }
+
+    const pdfBytes = await pdfDoc.save();
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", "attachment; filename=redacted.pdf");
+    res.send(Buffer.from(pdfBytes));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to generate redacted PDF" });
+  }
+});
+
 
 module.exports = router;

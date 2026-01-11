@@ -4,6 +4,7 @@ import { TOOLS } from "../../lib/tools";
 import CompareResult from "./compareResults";
 import SignatureCanvasBox from "./SignaturePad";
 import PdfPreview from "./PdfPreview";
+import RedactPdfPreview from "./RedactPreview";
 
 function Upload() {
   const { tool } = useParams();
@@ -20,6 +21,8 @@ function Upload() {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [password, setPassword] = useState("");
+  const [activeRect, setActiveRect] = useState(null);
+
 
   // 🔥 SIGN PDF STATES
   const [signatureData, setSignatureData] = useState(null);
@@ -197,6 +200,13 @@ function Upload() {
             )}
           </>
         )}
+
+        {config.toolKey === "redact_pdf" && (
+  <RedactPdfPreview
+    file={files[0]}
+  />
+)}
+
 
         {/* PROCESS BUTTON */}
         <div className="mt-6 text-center">

@@ -13,6 +13,7 @@
     "@tabler/icons-react": "^3.36.0",
     "@tailwindcss/vite": "^4.1.18",
     "clsx": "^2.1.1",
+    "jspdf": "^4.0.0",
     "motion": "^12.23.26",
     "pdfjs-dist": "^5.4.530",
     "react": "^19.2.0",
