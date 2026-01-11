@@ -1,76 +1,101 @@
 import { useState, useRef } from "react";
 
 export default function RedactionBox({ rect, onChange, onSelect, selected }) {
-  const [isDragging, setIsDragging] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const [resizeDir, setResizeDir] = useState(null);
+  const start = useRef({ x: 0, y: 0 });
 
-  const startPos = useRef({ x: 0, y: 0 });
+  // scale factors (screen → PDF coords)
+  const scaleX = rect.scaleX || 1;
+  const scaleY = rect.scaleY || 1;
 
-  const handleMouseDown = (e) => {
+  const mouseDown = (e) => {
     e.stopPropagation();
-
-    startPos.current = { x: e.clientX, y: e.clientY };
-    setIsDragging(true);
+    start.current = { x: e.clientX, y: e.clientY };
+    setDragging(true);
     onSelect(rect.id);
   };
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
+  const mouseUp = () => {
+    setDragging(false);
     setResizeDir(null);
   };
 
-  const handleDrag = (e) => {
-    if (!selected || !isDragging || resizeDir) return;
+  const mouseMove = (e) => {
+    if (resizeDir) return resize(e);
+    if (!dragging || !selected) return;
 
-    const dx = e.clientX - startPos.current.x;
-    const dy = e.clientY - startPos.current.y;
+    const dxScreen = e.clientX - start.current.x;
+    const dyScreen = e.clientY - start.current.y;
 
-    startPos.current = { x: e.clientX, y: e.clientY };
+    start.current = { x: e.clientX, y: e.clientY };
 
     onChange(rect.id, {
       ...rect,
-      x: rect.x + dx,
-      y: rect.y + dy
+      x: rect.x + dxScreen,
+      y: rect.y + dyScreen,
+      realX: rect.realX + dxScreen / scaleX,
+      realY: rect.realY + dyScreen / scaleY,
     });
   };
 
   const startResize = (e, dir) => {
     e.stopPropagation();
     setResizeDir(dir);
-
-    startPos.current = { x: e.clientX, y: e.clientY };
-    onSelect(rect.id);
+    start.current = { x: e.clientX, y: e.clientY };
   };
 
-  const handleResize = (e) => {
-    if (!resizeDir) return;
+  const resize = (e) => {
+    const dxScreen = e.clientX - start.current.x;
+    const dyScreen = e.clientY - start.current.y;
 
-    const dx = e.clientX - startPos.current.x;
-    const dy = e.clientY - startPos.current.y;
+    start.current = { x: e.clientX, y: e.clientY };
 
-    startPos.current = { x: e.clientX, y: e.clientY };
+    let newX = rect.x;
+    let newY = rect.y;
+    let newW = rect.width;
+    let newH = rect.height;
 
-    let newRect = { ...rect };
+    let newRealX = rect.realX;
+    let newRealY = rect.realY;
+    let newRealW = rect.realWidth;
+    let newRealH = rect.realHeight;
 
-    // Horizontal resize logic
-    if (resizeDir.includes("right")) newRect.width += dx;
+    if (resizeDir.includes("right")) {
+      newW += dxScreen;
+      newRealW += dxScreen / scaleX;
+    }
     if (resizeDir.includes("left")) {
-      newRect.width -= dx;
-      newRect.x += dx;
+      newX += dxScreen;
+      newW -= dxScreen;
+      newRealX += dxScreen / scaleX;
+      newRealW -= dxScreen / scaleX;
     }
-
-    // Vertical resize logic
-    if (resizeDir.includes("bottom")) newRect.height += dy;
+    if (resizeDir.includes("bottom")) {
+      newH += dyScreen;
+      newRealH += dyScreen / scaleY;
+    }
     if (resizeDir.includes("top")) {
-      newRect.height -= dy;
-      newRect.y += dy;
+      newY += dyScreen;
+      newH -= dyScreen;
+      newRealY += dyScreen / scaleY;
+      newRealH -= dyScreen / scaleY;
     }
 
-    // Minimum size constraint
-    newRect.width = Math.max(newRect.width, 10);
-    newRect.height = Math.max(newRect.height, 10);
+    if (newW < 10) newW = 10;
+    if (newH < 10) newH = 10;
 
-    onChange(rect.id, newRect);
+    onChange(rect.id, {
+      ...rect,
+      x: newX,
+      y: newY,
+      width: newW,
+      height: newH,
+      realX: newRealX,
+      realY: newRealY,
+      realWidth: newRealW,
+      realHeight: newRealH,
+    });
   };
 
   return (
@@ -82,58 +107,63 @@ export default function RedactionBox({ rect, onChange, onSelect, selected }) {
         width: rect.width,
         height: rect.height,
         border: "2px solid red",
-        background: "rgba(255, 0, 0, 0.3)",
-        cursor: selected ? "move" : "pointer",
-        zIndex: 1000
+        backgroundColor: "rgba(255,0,0,0.3)",
+        cursor: "move",
+        zIndex: 1000,
       }}
-      onMouseDown={handleMouseDown}
-      onMouseMove={(e) => {
-        handleDrag(e);
-        handleResize(e);
-      }}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
+      onMouseDown={mouseDown}
+      onMouseMove={mouseMove}
+      onMouseUp={mouseUp}
+      onMouseLeave={mouseUp}
       onContextMenu={(e) => {
         e.preventDefault();
-        onChange(rect.id, null); // delete rect
+        onChange(rect.id, null);
       }}
     >
-      {/* Resize handles (8 directions) */}
-      {selected && (
-        <>
-          {[
-            "top-left",
-            "top",
-            "top-right",
-            "left",
-            "right",
-            "bottom-left",
-            "bottom",
-            "bottom-right"
-          ].map((dir) => (
-            <div
-              key={dir}
-              onMouseDown={(e) => startResize(e, dir)}
-              style={{
-                position: "absolute",
-                width: 10,
-                height: 10,
-                background: "white",
-                border: "2px solid red",
-                cursor: `${dir}-resize`,
-                ...(dir.includes("top") && { top: -6 }),
-                ...(dir.includes("bottom") && { bottom: -6 }),
-                ...(dir.includes("left") && { left: -6 }),
-                ...(dir.includes("right") && { right: -6 }),
-                ...(dir === "top" && { left: "50%", transform: "translateX(-50%)" }),
-                ...(dir === "bottom" && { left: "50%", transform: "translateX(-50%)" }),
-                ...(dir === "left" && { top: "50%", transform: "translateY(-50%)" }),
-                ...(dir === "right" && { top: "50%", transform: "translateY(-50%)" })
-              }}
-            />
-          ))}
-        </>
-      )}
+      {selected &&
+        [
+          "top-left",
+          "top",
+          "top-right",
+          "left",
+          "right",
+          "bottom-left",
+          "bottom",
+          "bottom-right",
+        ].map((dir) => (
+          <div
+            key={dir}
+            onMouseDown={(e) => startResize(e, dir)}
+            style={{
+              position: "absolute",
+              width: 10,
+              height: 10,
+              background: "white",
+              border: "2px solid red",
+              cursor: `${dir}-resize`,
+              ...(dir.includes("top") && { top: -6 }),
+              ...(dir.includes("bottom") && { bottom: -6 }),
+              ...(dir.includes("left") && { left: -6 }),
+              ...(dir.includes("right") && { right: -6 }),
+              ...(dir === "top" && {
+                left: "50%",
+                transform: "translateX(-50%)",
+              }),
+              ...(dir === "bottom" && {
+                left: "50%",
+                transform: "translateX(-50%)",
+              }),
+              ...(dir === "left" && {
+                top: "50%",
+                transform: "translateY(-50%)",
+              }),
+              ...(dir === "right" && {
+                top: "50%",
+                transform: "translateY(-50%)",
+              }),
+            }}
+          />
+        ))}
     </div>
   );
 }
