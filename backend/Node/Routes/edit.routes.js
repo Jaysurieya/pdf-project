@@ -181,8 +181,16 @@ router.post("/crop", upload.single("files"), async (req, res) => {
     
     const pdfBytes = fs.readFileSync(filePath);
     const pdfDoc = await PDFDocument.load(pdfBytes);
+    
+    // Validate that PDF has only one page for cropping
+    const initialPages = pdfDoc.getPages();
+    if (initialPages.length > 1) {
+      return res.status(400).json({ 
+        message: "Crop functionality only supports single-page PDFs. Please upload a PDF with only one page." 
+      });
+    }
 
-    const pages = pdfDoc.getPages();
+    const pages = initialPages;
     
     // Create new pages with cropped content
     const newPages = [];
