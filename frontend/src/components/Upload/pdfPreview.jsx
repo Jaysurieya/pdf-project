@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef } from "react";
-import Draggable from "react-draggable";
 import pdfjsLib from "../../utils/pdfjs";
 
 const SIGN_WIDTH = 150;
@@ -10,133 +9,145 @@ export default function PdfPreview({
   selectedPage,
   setSelectedPage,
   signatureData,
-  onPlacement
+  onPlacement,
+  placements = []
 }) {
   const [pages, setPages] = useState([]);
+  const [uiPositions, setUiPositions] = useState({});
+  const [dragging, setDragging] = useState(false);
+
+  const pageWrapperRef = useRef(null);
   const pageImgRef = useRef(null);
-  const sigNodeRef = useRef(null); // 🔥 REQUIRED
 
-  // reset pages on file change
+  // Load PDF
   useEffect(() => {
-    setPages([]);
-  }, [file]);
-
-  // load PDF
-  useEffect(() => {
-    if (!file || !(file instanceof File)) return;
+    if (!file) return;
 
     const reader = new FileReader();
     reader.onload = async () => {
-      try {
-        const pdf = await pdfjsLib
-          .getDocument({ data: new Uint8Array(reader.result) })
-          .promise;
+      const pdf = await pdfjsLib
+        .getDocument({ data: new Uint8Array(reader.result) })
+        .promise;
 
-        const imgs = [];
-        for (let i = 1; i <= pdf.numPages; i++) {
-          const page = await pdf.getPage(i);
-          const viewport = page.getViewport({ scale: 1.5 });
+      const imgs = [];
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const viewport = page.getViewport({ scale: 1.5 });
 
-          const canvas = document.createElement("canvas");
-          const ctx = canvas.getContext("2d");
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
 
-          await page.render({ canvasContext: ctx, viewport }).promise;
-          imgs.push(canvas.toDataURL());
-        }
-
-        setPages(imgs);
-      } catch (err) {
-        console.error("PDF render error:", err);
+        await page.render({ canvasContext: ctx, viewport }).promise;
+        imgs.push(canvas.toDataURL());
       }
+      setPages(imgs);
     };
 
     reader.readAsArrayBuffer(file);
   }, [file]);
 
-  // calculate placement
-  const updatePlacement = () => {
-    if (!sigNodeRef.current || !pageImgRef.current) return;
+  // Default position per page
+  useEffect(() => {
+    if (signatureData && !uiPositions[selectedPage]) {
+      setUiPositions(prev => ({
+        ...prev,
+        [selectedPage]: { x: 40, y: 40 }
+      }));
+    }
+  }, [signatureData, selectedPage]);
 
-    const sigRect = sigNodeRef.current.getBoundingClientRect();
-    const pageRect = pageImgRef.current.getBoundingClientRect();
+  // Mouse move handler
+  const onMouseMove = (e) => {
+    if (!dragging || !pageImgRef.current) return;
 
-    const x = sigRect.left - pageRect.left;
-    const y = sigRect.top - pageRect.top;
+    const rect = pageImgRef.current.getBoundingClientRect();
+    const x = Math.max(
+      0,
+      Math.min(e.clientX - rect.left - SIGN_WIDTH / 2, rect.width - SIGN_WIDTH)
+    );
+    const y = Math.max(
+      0,
+      Math.min(e.clientY - rect.top - SIGN_HEIGHT / 2, rect.height - SIGN_HEIGHT)
+    );
+
+    setUiPositions(prev => ({
+      ...prev,
+      [selectedPage]: { x, y }
+    }));
 
     onPlacement({
       page: selectedPage,
-      xPercent: x / pageRect.width,
-      yPercent: y / pageRect.height,
-      widthPercent: SIGN_WIDTH / pageRect.width,
-      heightPercent: SIGN_HEIGHT / pageRect.height
+      xPercent: x / rect.width,
+      yPercent: y / rect.height,
+      widthPercent: SIGN_WIDTH / rect.width,
+      heightPercent: SIGN_HEIGHT / rect.height
     });
   };
-
-  // ensure placement after save
-  useEffect(() => {
-    if (signatureData && pages[selectedPage]) {
-      setTimeout(updatePlacement, 0);
-    }
-  }, [signatureData, selectedPage, pages]);
 
   return (
     <div className="flex gap-4">
       {/* PDF PAGE */}
-      <div className="flex-1 border relative min-h-[500px]">
-        {pages[selectedPage] ? (
-          <div className="relative">
+      <div
+        className="flex-1 border flex justify-center"
+        onMouseMove={onMouseMove}
+        onMouseUp={() => setDragging(false)}
+        onMouseLeave={() => setDragging(false)}
+      >
+        {pages[selectedPage] && (
+          <div ref={pageWrapperRef} className="relative">
             <img
               ref={pageImgRef}
               src={pages[selectedPage]}
-              className="w-full select-none"
               draggable={false}
+              className="select-none"
             />
 
-            {/* SIGNATURE */}
-            {signatureData && (
-              <Draggable
-                nodeRef={sigNodeRef}   // 🔥 FIX
-                bounds="parent"
-                defaultPosition={{ x: 50, y: 50 }}
-                onDrag={updatePlacement}
-                onStop={updatePlacement}
-              >
-                <img
-                  ref={sigNodeRef}     // 🔥 SAME REF
-                  src={signatureData}
-                  alt="signature"
-                  style={{
-                    width: SIGN_WIDTH,
-                    height: SIGN_HEIGHT,
-                    cursor: "move",
-                    position: "absolute",
-                    zIndex: 20
-                  }}
-                />
-              </Draggable>
+            {signatureData && uiPositions[selectedPage] && (
+              <img
+                src={signatureData}
+                style={{
+                  position: "absolute",
+                  left: uiPositions[selectedPage].x,
+                  top: uiPositions[selectedPage].y,
+                  width: SIGN_WIDTH,
+                  height: SIGN_HEIGHT,
+                  cursor: "move",
+                  zIndex: 1000
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setDragging(true);
+                }}
+                draggable={false}
+              />
             )}
-          </div>
-        ) : (
-          <div className="flex items-center justify-center h-full text-gray-500">
-            Loading PDF preview…
           </div>
         )}
       </div>
 
       {/* THUMBNAILS */}
-      <div className="w-32 overflow-y-auto">
-        {pages.map((p, i) => (
-          <img
-            key={i}
-            src={p}
-            onClick={() => setSelectedPage(i)}
-            className={`mb-2 cursor-pointer border ${
-              selectedPage === i ? "border-blue-500" : "border-gray-300"
-            }`}
-          />
-        ))}
+      <div className="w-36 overflow-y-auto">
+        {pages.map((p, i) => {
+          const placed = placements.some(pl => pl.page === i);
+          return (
+            <div key={i} className="mb-2">
+              <img
+                src={p}
+                onClick={() => setSelectedPage(i)}
+                className={`cursor-pointer border ${
+                  selectedPage === i
+                    ? "border-blue-500"
+                    : "border-gray-300"
+                }`}
+              />
+              <div className="text-xs text-center">
+                Page {i + 1} {placed ? "✅ Signed" : "❌ Not signed"}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

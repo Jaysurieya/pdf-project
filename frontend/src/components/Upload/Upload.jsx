@@ -26,10 +26,10 @@ function Upload() {
   const [selectedPage, setSelectedPage] = useState(0);
   const [placements, setPlacements] = useState([]);
 
-  // Debug (keep for now)
+  // Debug (keep this one only)
   useEffect(() => {
-    console.log("signatureData updated:", signatureData);
-  }, [signatureData]);
+    console.log("Current placements:", placements);
+  }, [placements]);
 
   // =========================
   // File selection
@@ -38,14 +38,27 @@ function Upload() {
     setFiles(Array.from(e.target.files));
     setSelectedPage(0);
     setPlacements([]);
+    setSignatureData(null);
   };
 
   // =========================
-  // SIGN PDF HANDLER
+  // SIGN PDF HANDLER (FINAL)
   // =========================
   const handleSign = async () => {
-    if (!files[0] || !signatureData || placements.length === 0) {
-      alert("Please upload PDF, draw signature, and place it on the page");
+    // ✅ FILTER VALID PLACEMENTS
+    const validPlacements = placements.filter(
+      (p) =>
+        typeof p.page === "number" &&
+        typeof p.xPercent === "number" &&
+        typeof p.yPercent === "number" &&
+        !isNaN(p.xPercent) &&
+        !isNaN(p.yPercent)
+    );
+
+    console.log("PLACEMENTS SENT TO BACKEND:", validPlacements);
+
+    if (!files[0] || !signatureData || validPlacements.length === 0) {
+      alert("Please upload PDF and place the signature on at least one page");
       return;
     }
 
@@ -55,7 +68,7 @@ function Upload() {
       const formData = new FormData();
       formData.append("pdf", files[0]);
       formData.append("signatureBase64", signatureData);
-      formData.append("placements", JSON.stringify(placements));
+      formData.append("placements", JSON.stringify(validPlacements));
 
       const res = await fetch("http://localhost:5000/api/security/sign", {
         method: "POST",
@@ -137,7 +150,30 @@ function Upload() {
           onChange={handleFileChange}
           className="mb-4"
         />
-
+        {config.toolKey === "protect_pdf" && (
+          <div className="mb-4">
+            <label htmlFor="password">Password:</label>
+            <input
+              type="password"
+              id="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="border p-2 ml-2"
+            />
+          </div>
+        )}
+        {config.toolKey === "unlock_pdf" && (
+          <div className="mb-4">
+            <label htmlFor="password">Password:</label>
+            <input
+              type="password"
+              id="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="border p-2 ml-2"
+            />
+          </div>
+        )}
         {/* SIGN PDF UI */}
         {config.toolKey === "sign_pdf" && (
           <>
@@ -149,8 +185,10 @@ function Upload() {
                 selectedPage={selectedPage}
                 setSelectedPage={setSelectedPage}
                 signatureData={signatureData}
+                placements={placements}
                 onPlacement={(p) => {
                   setPlacements((prev) => {
+                    // ✅ ensure one placement per page
                     const rest = prev.filter((x) => x.page !== p.page);
                     return [...rest, p];
                   });
